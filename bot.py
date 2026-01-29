@@ -1,47 +1,73 @@
 import asyncio
 import os
 import requests
-from bs4 import BeautifulSoup
 from telegram import Bot
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 CHAT_ID = int(os.environ["CHAT_ID"])
-INTERVAL = int(os.environ.get("INTERVAL", 120))
+INTERVAL = int(os.environ.get("INTERVAL", 240))  # 240 сек = 4 хв
 
 URL = "https://toronto.pasport.org.ua/solutions/e-queue"
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
     "Accept-Language": "uk-UA,uk;q=0.9,en;q=0.8",
 }
 
 bot = Bot(token=BOT_TOKEN)
+last_state = False  # пам'ятаємо попередній стан
 
-def check_slots():
-    r = requests.get(URL, headers=HEADERS, timeout=20)
-    if r.status_code != 200:
-        return f"❌ Помилка сайту: {r.status_code}"
 
-    text = r.text.lower()
+def has_slots():
+    """Повертає True якщо, ймовірно, є слоти. На 403/помилках — None."""
+    try:
+        r = requests.get(URL, headers=HEADERS, timeout=20)
 
-    no_slots = [
-        "вільних місць немає",
-        "немає доступних",
-        "no available"
-    ]
+        # якщо сайт блокує (403) або інша помилка — просто пропускаємо цикл
+        if r.status_code != 200:
+            return None
 
-    if any(x in text for x in no_slots):
-        return "⛔ Слотів немає"
-    else:
-        return "🔥 МОЖЛИВО є слоти! Перевір сайт вручну"
+        text = r.text.lower()
+
+        no_slots_phrases = [
+            "вільних місць немає",
+            "немає доступних",
+            "no available",
+        ]
+
+        return not any(p in text for p in no_slots_phrases)
+
+    except Exception:
+        return None
+
 
 async def main():
-    await bot.send_message(chat_id=CHAT_ID, text="🤖 Бот запущений 24/7")
+    global last_state
+
+    # Одне стартове повідомлення (можеш прибрати, якщо хочеш повну тишу)
+    await bot.send_message(
+        chat_id=CHAT_ID,
+        text="🤖 Бот запущений 24/7. Напишу ТІЛЬКИ коли зʼявляться слоти."
+    )
 
     while True:
-        result = check_slots()
-        await bot.send_message(chat_id=CHAT_ID, text=result)
+        current = has_slots()
+
+        # current == None => сайт не відповів нормально (403/помилка) -> мовчимо
+        if current is True and last_state is False:
+            await bot.send_message(
+                chat_id=CHAT_ID,
+                text="🔥 ЗʼЯВИЛИСЯ СЛОТИ! Перевір швидко:\n" + URL
+            )
+            last_state = True
+
+        elif current is False:
+            # якщо точно немає слотів — просто памʼятаємо стан і мовчимо
+            last_state = False
+
         await asyncio.sleep(INTERVAL)
 
-asyncio.run(main())
+
+if __name__ == "__main__":
+    asyncio.run(main())
 
