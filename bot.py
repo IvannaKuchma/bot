@@ -8,6 +8,8 @@ print("BOT STARTED OK", flush=True)
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 CHAT_ID = int(os.environ["CHAT_ID"])
 INTERVAL = int(os.environ.get("INTERVAL", 240))  # 240 сек = 4 хв
+STATUS_INTERVAL = int(os.environ.get("STATUS_INTERVAL", 3 * 60 * 60))  # 3 години
+
 
 URL = "https://toronto.pasport.org.ua/solutions/e-queue"
 
@@ -50,12 +52,16 @@ async def main():
 
     await bot.send_message(
         chat_id=CHAT_ID,
-        text="🤖 Бот запущений 24/7. Напишу ТІЛЬКИ коли зʼявляться слоти."
+        text="🤖 Бот запущений 24/7. Напишу, коли зʼявляться слоти + буду давати статус кожні кілька годин."
     )
+
+    last_status_ts = 0  # коли востаннє шлали статус
 
     while True:
         current = has_slots()
+        now = asyncio.get_event_loop().time()
 
+        # 1) Термінове повідомлення: слоти з'явилися
         if current is True and last_state is False:
             await bot.send_message(
                 chat_id=CHAT_ID,
@@ -65,6 +71,18 @@ async def main():
 
         elif current is False:
             last_state = False
+
+        # 2) Регулярний статус раз на STATUS_INTERVAL
+        if now - last_status_ts >= STATUS_INTERVAL:
+            if current is True:
+                msg = "✅ Статус: ймовірно Є слоти (або сторінка не містить фраз 'немає місць')."
+            elif current is False:
+                msg = "❌ Статус: слотів немає."
+            else:
+                msg = "⚠️ Статус: не вдалося перевірити (можливий 403/капча/помилка)."
+
+            await bot.send_message(chat_id=CHAT_ID, text=msg + "\n" + URL)
+            last_status_ts = now
 
         await asyncio.sleep(INTERVAL)
 
