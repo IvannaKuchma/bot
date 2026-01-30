@@ -2,6 +2,8 @@ import asyncio
 import os
 import requests
 from telegram import Bot
+print("BOT STARTED OK", flush=True)
+
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 CHAT_ID = int(os.environ["CHAT_ID"])
@@ -43,6 +45,10 @@ def has_slots():
 
 async def main():
     global last_state
+
+   print("ENTERING LOOP", flush=True)
+
+
 
     # Одне стартове повідомлення (можеш прибрати, якщо хочеш повну тишу)
     await bot.send_message(
