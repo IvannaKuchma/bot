@@ -45,8 +45,9 @@ def has_slots():
 
 async def main():
     global last_state
-   print("ENTERING LOOP", flush=True)
-    # Одне стартове повідомлення (можеш прибрати, якщо хочеш повну тишу)
+
+    print("ENTERING LOOP", flush=True)
+
     await bot.send_message(
         chat_id=CHAT_ID,
         text="🤖 Бот запущений 24/7. Напишу ТІЛЬКИ коли зʼявляться слоти."
@@ -55,7 +56,6 @@ async def main():
     while True:
         current = has_slots()
 
-        # current == None => сайт не відповів нормально (403/помилка) -> мовчимо
         if current is True and last_state is False:
             await bot.send_message(
                 chat_id=CHAT_ID,
@@ -64,7 +64,6 @@ async def main():
             last_state = True
 
         elif current is False:
-            # якщо точно немає слотів — просто памʼятаємо стан і мовчимо
             last_state = False
 
         await asyncio.sleep(INTERVAL)
