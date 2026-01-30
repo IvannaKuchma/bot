@@ -45,11 +45,7 @@ def has_slots():
 
 async def main():
     global last_state
-
    print("ENTERING LOOP", flush=True)
-
-
-
     # Одне стартове повідомлення (можеш прибрати, якщо хочеш повну тишу)
     await bot.send_message(
         chat_id=CHAT_ID,
